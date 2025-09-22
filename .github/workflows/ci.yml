@@ -1,0 +1,59 @@
+# This name will appear in the "Actions" tab of your GitHub repository.
+name: Python CI/CD Pipeline
+
+# This section defines the triggers for the workflow.
+# It will run on every push to any branch and on any pull request.
+on:
+  push:
+    branches: [ "**" ] # Runs on pushes to all branches
+  pull_request:
+    branches: [ "main" ] # Runs on pull requests targeting the main branch
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel.
+jobs:
+  # This job is named "build-and-test".
+  build-and-test:
+    # The type of virtual machine to run the job on. "ubuntu-latest" is a good default.
+    runs-on: ubuntu-latest
+
+    # A sequence of tasks that will be executed as part of the job.
+    steps:
+      # Step 1: Check out your repository code so the workflow can access it.
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the Python environment.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Step 3: Install project dependencies.
+      # This step assumes you have a "requirements.txt" file in your repo.
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # Step 4: Lint the code for style and errors.
+      # Flake8 is a popular Python linter. This command stops the build if there are errors.
+      - name: Lint with Flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # Step 5: Run tests.
+      # This step assumes your tests are in a "tests/" directory and use the pytest framework.
+      - name: Test with Pytest
+        run: |
+          pytest
+
+      # Step 6: Build a Docker image (optional but good practice).
+      # This step just builds the image to ensure your Dockerfile is valid.
+      # It does not push it to a registry yet.
+      - name: Build Docker Image
+        if: success() # Only run this step if all previous steps passed
+        run: |
+          # This assumes you have a Dockerfile in the root of your repository.
+          docker build . --file Dockerfile --tag my-image-name:$(date +%s)

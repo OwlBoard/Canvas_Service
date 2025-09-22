@@ -1,0 +1,11 @@
+# Web Framework
+fastapi
+
+# ASGI Server to run FastAPI
+uvicorn[standard]
+
+# Database Object-Relational Mapper (ORM)
+sqlalchemy
+
+# PostgreSQL Database Driver (for connecting to your relational DB)
+psycopg2-binary
