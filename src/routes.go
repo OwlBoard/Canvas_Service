@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -48,24 +47,18 @@ func AddCanvas(dbpool *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
-		var canvasUUID pgtype.UUID
-		if err := canvasUUID.Scan(canvasID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "ID de canvas inválido."})
-			return
-		}
-
-		if _, err := tx.Exec(context.Background(), "DELETE FROM shapes WHERE canvas_id = $1", canvasUUID); err != nil {
+		if _, err := tx.Exec(context.Background(), "DELETE FROM shapes WHERE canvas_id = $1", canvasID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudieron eliminar las figuras antiguas."})
 			return
 		}
-		if _, err := tx.Exec(context.Background(), "DELETE FROM layers WHERE canvas_id = $1", canvasUUID); err != nil {
+		if _, err := tx.Exec(context.Background(), "DELETE FROM layers WHERE canvas_id = $1", canvasID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudieron eliminar las capas antiguas."})
 			return
 		}
 
 		layerRows := make([][]interface{}, len(req.Layers))
 		for i, l := range req.Layers {
-			layerRows[i] = []interface{}{l.ID, canvasUUID, l.Name, l.Visible, l.Locked, i} // i es el orden
+			layerRows[i] = []interface{}{l.ID, canvasID, l.Name, l.Visible, l.Locked, i} // i es el orden
 		}
 		_, err = tx.CopyFrom(context.Background(), pgx.Identifier{"layers"}, []string{"id", "canvas_id", "name", "visible", "locked", "layer_order"}, pgx.CopyFromRows(layerRows))
 		if err != nil {
@@ -87,7 +80,7 @@ func AddCanvas(dbpool *pgxpool.Pool) gin.HandlerFunc {
 			}
 			attrsJSON, _ := json.Marshal(attrs)
 
-			rows[i] = []interface{}{canvasUUID, req.UserID, s.LayerNumber, s.Type, s.Color, s.StrokeWidth, attrsJSON}
+			rows[i] = []interface{}{canvasID, req.UserID, s.LayerNumber, s.Type, s.Color, s.StrokeWidth, attrsJSON}
 		}
 
 		_, err = tx.CopyFrom(context.Background(),

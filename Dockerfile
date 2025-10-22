@@ -7,16 +7,24 @@ WORKDIR /app
 
 # Copiamos los archivos de dependencias para aprovechar el cache de Docker
 COPY go.mod go.sum ./
-# Descargamos las dependencias
-RUN go mod download
+# Descargamos las dependencias con cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copiamos el resto del código fuente
 COPY . .
 
-# Compilamos la aplicación.
+# Compilamos la aplicación con optimizaciones
 # CGO_ENABLED=0 deshabilita CGO para crear un binario estático.
-# -o /canvas_service especifica el nombre del archivo de salida.
-RUN CGO_ENABLED=0 GOOS=linux go build -v -o /canvas_service .
+# -ldflags="-s -w" reduce el tamaño del binario (strip debug info)
+# -trimpath elimina paths del sistema del binario
+# Removemos -v para build más rápido (verbose output)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w" \
+    -trimpath \
+    -o /canvas_service .
 
 # Etapa 2: Ejecución (final)
 # Usamos una imagen base mínima de Alpine. Es muy pequeña pero incluye
