@@ -1,44 +1,44 @@
-# Stage 1: The "builder" stage
-# We use a full Python image to install dependencies.
-FROM python:3.11-slim as builder
+# Etapa 1: Compilación (builder)
+# Usamos una imagen oficial de Go para compilar nuestra aplicación.
+FROM golang:1.25-alpine AS builder
 
-# Set the working directory inside the container
+# Establecemos el directorio de trabajo
 WORKDIR /app
 
-# Install system dependencies that might be needed by Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential
+# Copiamos los archivos de dependencias para aprovechar el cache de Docker
+COPY go.mod go.sum ./
+# Descargamos las dependencias con cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Copy only the requirements file to leverage Docker's layer caching
-COPY ./requirements.txt .
+# Copiamos el resto del código fuente
+COPY . .
 
-# Install the Python dependencies
-RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
+# Compilamos la aplicación con optimizaciones
+# CGO_ENABLED=0 deshabilita CGO para crear un binario estático.
+# -ldflags="-s -w" reduce el tamaño del binario (strip debug info)
+# -trimpath elimina paths del sistema del binario
+# Removemos -v para build más rápido (verbose output)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w" \
+    -trimpath \
+    -o /canvas_service .
 
+# Etapa 2: Ejecución (final)
+# Usamos una imagen base mínima de Alpine. Es muy pequeña pero incluye
+# herramientas básicas y certificados CA, a diferencia de 'scratch'.
+FROM alpine:latest
 
-# Stage 2: The "final" stage
-# We start from a clean, lightweight Python image.
-FROM python:3.11-slim
+# Alpine necesita este paquete para ejecutar binarios Go.
+RUN apk --no-cache add ca-certificates
 
-# Set the working directory
-WORKDIR /app
+# Copiamos el ejecutable compilado desde la etapa 'builder'
+COPY --from=builder /canvas_service /canvas_service
 
-# Copy the pre-built wheels from the "builder" stage
-COPY --from=builder /app/wheels /wheels
+# Exponemos el puerto en el que corre nuestro servicio
+EXPOSE 8080
 
-# Copy the requirements file
-COPY ./requirements.txt .
-
-# Install the dependencies from the local wheels, which is much faster
-RUN pip install --no-cache /wheels/*
-
-# Copy your application source code into the container
-# This assumes your code will be inside an "app/" directory
-COPY ./app ./app
-
-# Expose the port that the Uvicorn server will run on
-EXPOSE 8000
-
-# The command to run your application
-# This tells uvicorn to run the "app" object inside the "main.py" file.
-# --host 0.0.0.0 makes it accessible from outside the container.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# El comando para ejecutar la aplicación cuando el contenedor inicie
+ENTRYPOINT ["/canvas_service"]
