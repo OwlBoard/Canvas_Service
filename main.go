@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gin-contrib/cors"
+	// "github.com/gin-contrib/cors" // CORS disabled - handled by API Gateway
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,12 +22,14 @@ func main() {
 	// Configurar el router de Gin
 	router := gin.Default()
 
+	// --- CORS DISABLED - Handled by API Gateway ---
 	// Configurar CORS
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
-	router.Use(cors.New(config))
+	// config := cors.DefaultConfig()
+	// config.AllowAllOrigins = true
+	// config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	// config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	// router.Use(cors.New(config))
+	// ----------------------------------------------
 
 	// Iniciar el consumidor de RabbitMQ en una goroutine para que no bloquee el servidor.
 	go messaging.StartConsumer(dbpool)
