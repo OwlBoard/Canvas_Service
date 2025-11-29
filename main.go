@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,14 +23,14 @@ func main() {
 	// Configurar el router de Gin
 	router := gin.Default()
 
-<<<<<<< Updated upstream
-	// Configurar CORS
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
-	router.Use(cors.New(config))
-=======
+	// CORS is handled by the API Gateway (nginx) - DO NOT enable here
+	// Uncomment only if testing Canvas Service directly without API Gateway
+	// config := cors.DefaultConfig()
+	// config.AllowAllOrigins = true
+	// config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	// config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	// router.Use(cors.New(config))
+
 	// Health endpoint: returns 200 only when the service is ready
 	router.GET("/health", func(c *gin.Context) {
 		if atomic.LoadUint32(&ready) == 1 {
@@ -40,7 +39,6 @@ func main() {
 		}
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "starting"})
 	})
->>>>>>> Stashed changes
 
 	// Readiness middleware: block all non-health requests until ready
 	router.Use(func(c *gin.Context) {
