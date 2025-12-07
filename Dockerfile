@@ -32,13 +32,17 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM alpine:latest
 
 # Alpine necesita este paquete para ejecutar binarios Go.
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates curl
 
 # Copiamos el ejecutable compilado desde la etapa 'builder'
 COPY --from=builder /canvas_service /canvas_service
 
 # Exponemos el puerto en el que corre nuestro servicio
 EXPOSE 8080
+
+# Healthcheck so Docker can detect readiness via the service's /health endpoint
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://127.0.0.1:8080/health || exit 1
 
 # El comando para ejecutar la aplicación cuando el contenedor inicie
 ENTRYPOINT ["/canvas_service"]
